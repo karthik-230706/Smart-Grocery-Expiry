@@ -1,0 +1,26 @@
+# Render Blueprint — New + > Blueprint > pick this repo.
+# Repo layout expected at the repo ROOT:  backend/  frontend/  render.yaml
+services:
+  - type: web
+    name: smartshelf
+    runtime: node
+    plan: free                # free = data resets on every restart/redeploy (see README)
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # Paste your MongoDB Atlas connection string in Render's Environment tab.
+      # With it set, accounts/stock/orders survive restarts and redeploys.
+      - key: MONGODB_URI
+        sync: false
+      # (Alternative: a Postgres connection string in DATABASE_URL instead.)
+      # --- To KEEP accounts/orders/stock between restarts: switch `plan` to a
+      # --- paid one (e.g. starter), uncomment the 2 blocks below, and redeploy.
+      # - key: DB_PATH
+      #   value: /var/data/db.json
+    # disk:
+    #   name: smartshelf-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

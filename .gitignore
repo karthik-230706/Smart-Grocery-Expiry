@@ -1,0 +1,9 @@
+node_modules/
+backend/db.json
+backend/db.json.*
+backend/*.pem
+backend/.certs/
+*.log
+.DS_Store
+backend/online-backup-*.json
+backend/backups/

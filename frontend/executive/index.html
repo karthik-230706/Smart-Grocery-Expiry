@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartShelf — Executive Login</title>
+<!-- Fonts and the barcode-scanning library are bundled locally (fonts/, vendor/)
+     so nothing is fetched from an outside server — everything this page needs
+     ships with it. -->
+<link rel="stylesheet" href="fonts/fonts.css">
+<script src="vendor/zxing.min.js"></script>
+<script src="vendor/qrcode.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ======================= ROLE PICKER ======================= -->
+<div id="roleScreen" class="auth-wrap">
+  <div class="role-card">
+    <span class="auth-logo brand-logo-wrap">
+      <svg class="brand-logo-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="SmartShelf trolley logo">
+        <defs>
+          <linearGradient id="trolleyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7C3AED"/>
+            <stop offset="100%" stop-color="#EC4899"/>
+          </linearGradient>
+        </defs>
+        <path d="M6 8h6l3.2 6" fill="none" stroke="url(#trolleyGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M15.2 14h39.8a3 3 0 0 1 2.9 3.8l-4.6 17a4 4 0 0 1-3.9 3h-27a4 4 0 0 1-3.9-3.1L15.2 14z" fill="none" stroke="url(#trolleyGrad)" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M20 21h37M22.5 28.5h33M25 36h29" stroke="url(#trolleyGrad)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="24" cy="52" r="5" fill="url(#trolleyGrad)"/>
+        <circle cx="47" cy="52" r="5" fill="url(#trolleyGrad)"/>
+      </svg>
+    </span>
+    <h1>SmartShelf</h1>
+    <p>Scan it. Track it. Never waste it.</p>
+    <div class="role-buttons">
+      <a class="role-btn role-sales" id="pickSales" href="../admin/">
+        <span class="role-emoji">🧑‍💼</span>
+        <span class="role-title">Admin</span>
+        <span class="role-sub">Add stock via barcode or manual entry</span>
+      </a>
+      <a class="role-btn role-user" id="pickUser" href="../customer/">
+        <span class="role-emoji">🛒</span>
+        <span class="role-title">Customer</span>
+        <span class="role-sub">Browse items &amp; freshness status</span>
+      </a>
+    </div>
+    <a class="executive-login-link" id="pickExecutive" href="../executive/">🧑‍💻 Executive login</a>
+  </div>
+</div>
+
+<!-- ======================= AUTH SCREEN ======================= -->
+<div id="authScreen" class="auth-wrap hidden">
+  <div class="auth-card">
+    <a class="back-link" id="backToRoles" href="../index.html">&larr; Change account type</a>
+    <div class="auth-brand">
+      <span class="auth-logo" id="authRoleEmoji">🛒</span>
+      <h1 id="authRoleTitle">SmartShelf</h1>
+      <p id="authRoleSub">Scan it. Track it. Never waste it.</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Log in</button>
+      <button class="auth-tab" data-tab="register">Create account</button>
+    </div>
+
+    <form id="loginForm" class="auth-form">
+      <label>Email <input type="email" id="loginEmail" required placeholder="you@example.com"></label>
+      <label>Password <input type="password" id="loginPassword" required placeholder="••••••••"></label>
+      <button type="button" class="forgot-link" id="forgotPasswordLink">Forgot password?</button>
+      <div class="auth-error" id="loginError"></div>
+      <button type="submit" class="btn btn-primary btn-full">Log in</button>
+    </form>
+
+    <form id="registerForm" class="auth-form hidden">
+      <label>Name <input type="text" id="regName" required placeholder="Your name"></label>
+      <label>Email <input type="email" id="regEmail" required placeholder="you@example.com"></label>
+      <label>Mobile number <input type="tel" id="regPhone" required placeholder="10-digit mobile number"></label>
+      <label>Password <input type="password" id="regPassword" required placeholder="At least 6 characters"></label>
+      <div class="hint" style="margin:-6px 0 0;">Your mobile number is used to send a login OTP.</div>
+      <div class="auth-error" id="registerError"></div>
+      <div class="auth-success" id="registerSuccess"></div>
+      <button type="submit" class="btn btn-primary btn-full">Create account</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= OTP VERIFICATION SCREEN ======================= -->
+<div id="otpScreen" class="auth-wrap hidden">
+  <div class="auth-card">
+    <button class="back-link" id="otpBackBtn">&larr; Back to login</button>
+    <div class="auth-brand">
+      <span class="auth-logo" id="otpRoleEmoji">🔐</span>
+      <h1>Verify it's you</h1>
+      <p id="otpSub"></p>
+    </div>
+    <form id="otpForm" class="auth-form">
+      <label id="otpEmailLabel" class="hidden">Email OTP <input type="text" id="otpEmailInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"></label>
+      <label>Mobile OTP <input type="text" id="otpPhoneInput" required inputmode="numeric" maxlength="6" placeholder="6-digit code"></label>
+      <div class="otp-demo-hint" id="otpDemoHint"></div>
+      <div class="auth-error" id="otpError"></div>
+      <div class="auth-success" id="otpSuccess"></div>
+      <button type="submit" class="btn btn-primary btn-full">Verify &amp; continue</button>
+      <button type="button" class="forgot-link" id="resendOtpBtn" style="align-self:center;margin-top:2px;">Resend OTP</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= FORGOT PASSWORD MODAL ======================= -->
+<div id="forgotOverlay" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3>Reset password</h3><button class="modal-close" id="closeForgotModal">✕</button></div>
+    <p class="subtle" id="forgotRoleHint" style="margin:-6px 0 16px;"></p>
+    <form id="forgotForm" class="auth-form">
+      <label>Account email <input type="email" id="forgotEmail" required placeholder="you@example.com"></label>
+      <label>New password <input type="password" id="forgotNewPassword" required placeholder="At least 6 characters"></label>
+      <div class="hint">Demo mode — no email is sent, your password is updated right away.</div>
+      <div class="auth-error" id="forgotError"></div>
+      <div class="auth-success" id="forgotSuccess"></div>
+      <button type="submit" class="btn btn-primary btn-full">Reset password</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= SALES DASHBOARD ======================= -->
+<div id="salesScreen" class="hidden">
+  <header class="topbar topbar-sales">
+    <div class="brand"><span class="auth-logo small" id="salesRoleEmoji">🧑‍💼</span> SmartShelf <span class="role-flag" id="salesRoleFlag">Admin</span></div>
+    <div class="topbar-summary" id="salesSummaryChips"></div>
+    <div class="topbar-user"><span id="salesGreeting"></span><button class="btn btn-ghost" id="salesLogoutBtn">Log out</button></div>
+  </header>
+
+  <div class="app-body">
+  <nav class="sidebar">
+    <button class="sidebar-cta" id="sidebarAddItemBtn">➕ Add Item</button>
+    <button class="dash-nav-btn" data-salestab="stock">📦 <span>Stock &amp; Expiry</span> <span class="nav-badge hidden" id="stockNavBadge">0</span></button>
+    <button class="dash-nav-btn" data-salestab="offers">🏷️ <span>Offer Approvals</span> <span class="nav-badge hidden" id="offersNavBadge">0</span></button>
+    <button class="dash-nav-btn" data-salestab="orders">🧾 <span>Orders</span></button>
+    <button class="dash-nav-btn hidden" id="accountsNavBtn" data-salestab="accounts">🏢 <span>Admins &amp; Customers</span></button>
+    <button class="dash-nav-btn" data-salestab="profile">👤 <span>Profile</span></button>
+    <button class="dash-nav-btn" data-salestab="overview">📊 <span>Overview</span></button>
+  </nav>
+
+  <main class="main">
+    <!-- ---- OVERVIEW ---- -->
+    <section id="salesPanelOverview" class="dash-panel">
+      <div class="stat-cards">
+        <div class="stat-card"><span class="stat-label">Total orders</span><span class="stat-value" id="statTotalOrders">0</span></div>
+        <div class="stat-card"><span class="stat-label">Revenue</span><span class="stat-value" id="statRevenue">₹0</span></div>
+        <div class="stat-card"><span class="stat-label">Money saved for customers</span><span class="stat-value" id="statMoneySaved">₹0</span><span class="stat-sub">via approved expiry discounts</span></div>
+        <div class="stat-card"><span class="stat-label">Pending offer approvals</span><span class="stat-value" id="statPendingApprovals">0</span><span class="stat-sub">awaiting your review</span></div>
+      </div>
+      <div class="dash-grid-2">
+        <div class="panel-card">
+          <h3>Expiry risk breakdown (active batches)</h3>
+          <div class="risk-bars" id="riskBars"></div>
+        </div>
+        <div class="panel-card">
+          <h3>Low stock — reorder recommended</h3>
+          <table class="dash-table"><thead><tr><th>Product</th><th>Units left</th></tr></thead><tbody id="lowStockBody"></tbody></table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <h3>Top-selling categories</h3>
+        <table class="dash-table"><thead><tr><th>Category</th><th>Items sold</th></tr></thead><tbody id="topCategoriesBody"></tbody></table>
+      </div>
+    </section>
+
+    <!-- ---- STOCK & EXPIRY ---- -->
+    <section id="salesPanelStock" class="dash-panel hidden">
+      <div class="alarm-banner hidden" id="salesAlarmBanner">
+        <span class="alarm-icon">⏰</span>
+        <div class="alarm-text">
+          <strong id="salesAlarmTitle"></strong>
+          <span id="salesAlarmDetail"></span>
+        </div>
+        <button class="alarm-mute" id="alarmMuteBtn" title="Mute sound">🔊</button>
+        <button class="alarm-dismiss" id="alarmDismissBtn">Dismiss</button>
+      </div>
+      <div class="toolbar">
+        <div><h2>Stock &amp; expiry</h2><p class="subtle" id="stockPanelSub">Items you add here become visible to all Customers automatically. Other Admins can't see or edit your stock.</p></div>
+        <button class="btn btn-primary" id="openAddModal">+ Add item</button>
+      </div>
+      <div class="status-filters" id="salesStatusFilters"></div>
+      <div class="grid" id="salesGrid"></div>
+    </section>
+
+    <!-- ---- OFFER APPROVALS ---- -->
+    <section id="salesPanelOffers" class="dash-panel hidden">
+      <div class="toolbar">
+        <div><h2>Offer approvals</h2><p class="subtle">Accept a discount to make it live for Customers, or keep the item at full price.</p></div>
+      </div>
+      <div id="offerList"></div>
+    </section>
+
+    <!-- ---- ORDERS ---- -->
+    <section id="salesPanelOrders" class="dash-panel hidden">
+      <div class="toolbar">
+        <div><h2>All orders</h2><p class="subtle">Every order placed by Customers, most recent first.</p></div>
+      </div>
+      <div id="allOrdersList"></div>
+    </section>
+
+    <!-- ---- ACCOUNTS (Executive only) ---- -->
+    <section id="salesPanelAccounts" class="dash-panel hidden">
+      <div class="toolbar">
+        <div><h2>Admins &amp; Customers</h2><p class="subtle">Create and manage every login you oversee. Each Admin's stock stays separate from every other Admin's.</p></div>
+      </div>
+      <div class="dash-grid-2">
+        <div class="panel-card">
+          <div class="toolbar" style="margin-bottom:10px;"><h3 style="margin:0;">Admins</h3><button class="btn btn-primary" id="openAddAdminBtn">+ Add Admin</button></div>
+          <table class="dash-table"><thead><tr><th>Name</th><th>Email</th><th>Items</th><th>Pending offers</th><th></th></tr></thead><tbody id="adminsBody"></tbody></table>
+        </div>
+        <div class="panel-card">
+          <div class="toolbar" style="margin-bottom:10px;"><h3 style="margin:0;">Customers</h3><button class="btn btn-primary" id="openAddCustomerBtn">+ Add Customer</button></div>
+          <table class="dash-table"><thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Total spent</th><th></th></tr></thead><tbody id="customersBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- PROFILE ---- -->
+    <section id="salesPanelProfile" class="dash-panel hidden">
+      <div class="profile-card">
+        <h2>Your profile</h2>
+        <div class="profile-row"><span>Email</span><strong id="salesProfileEmail"></strong></div>
+        <div class="profile-row"><span>Role</span><strong id="salesProfileRole">Admin</strong></div>
+        <form id="salesProfileForm" class="auth-form">
+          <label>Name <input type="text" id="salesProfileName" required></label>
+          <label>Mobile number <input type="tel" id="salesProfilePhone" required placeholder="Used for your login OTP"></label>
+          <div class="auth-error" id="salesProfileError"></div>
+          <div class="auth-success" id="salesProfileSuccess"></div>
+          <button type="submit" class="btn btn-primary">Save changes</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  </div>
+</div>
+
+<!-- ======================= USER DASHBOARD ======================= -->
+<div id="userScreen" class="hidden">
+  <header class="topbar topbar-user-bar">
+    <div class="brand"><span class="auth-logo small">🛒</span> SmartShelf <span class="role-flag">Customer</span></div>
+    <div class="topbar-summary" id="userSummaryChips"></div>
+    <div class="topbar-user">
+      <span id="userGreeting"></span>
+      <button class="cart-btn" id="openCartBtn">🛍️ Cart <span class="cart-badge hidden" id="cartBadge">0</span></button>
+      <button class="btn btn-ghost" id="userLogoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+  <nav class="sidebar">
+    <button class="dash-nav-btn active" data-usertab="shop">🛍️ <span>Shop</span></button>
+    <button class="dash-nav-btn" data-usertab="dashboard">📊 <span>Dashboard</span></button>
+    <button class="dash-nav-btn" data-usertab="profile">👤 <span>Profile</span></button>
+  </nav>
+
+  <main class="main">
+    <!-- ---- SHOP ---- -->
+    <section id="userPanelShop" class="dash-panel">
+      <div class="toolbar">
+        <div><h2>Available items</h2><p class="subtle">Live stock added by Sales Executives — freshness &amp; price update automatically.</p></div>
+      </div>
+      <div class="view-tabs" id="userViewTabs">
+        <button class="view-tab active" data-view="all">🏬 All items</button>
+        <button class="view-tab offer-tab" data-view="offers">🔥 Offer zone</button>
+      </div>
+      <div class="shop-search-row">
+        <span class="shop-search-icon">🔍</span>
+        <input type="text" id="shopSearchInput" placeholder="Search items, brands or categories...">
+      </div>
+      <div class="category-chips" id="userCategoryChips"></div>
+      <div class="status-filters" id="userStatusFilters"></div>
+      <div class="grid" id="userGrid"></div>
+    </section>
+
+    <!-- ---- DASHBOARD ---- -->
+    <section id="userPanelDashboard" class="dash-panel hidden">
+      <div class="stat-cards">
+        <div class="stat-card"><span class="stat-label">Total orders</span><span class="stat-value" id="userStatTotalOrders">0</span></div>
+        <div class="stat-card"><span class="stat-label">Total spent</span><span class="stat-value" id="userStatTotalSpent">₹0</span></div>
+        <div class="stat-card"><span class="stat-label">You saved</span><span class="stat-value" id="userStatTotalSaved">₹0</span><span class="stat-sub">via expiry discounts</span></div>
+      </div>
+      <div class="panel-card">
+        <h3>Recent orders</h3>
+        <div id="userRecentOrders"></div>
+      </div>
+    </section>
+
+    <!-- ---- PROFILE ---- -->
+    <section id="userPanelProfile" class="dash-panel hidden">
+      <div class="profile-card">
+        <h2>Your profile</h2>
+        <div class="profile-row"><span>Email</span><strong id="userProfileEmail"></strong></div>
+        <div class="profile-row"><span>Role</span><strong>Customer</strong></div>
+        <form id="userProfileForm" class="auth-form">
+          <label>Name <input type="text" id="userProfileName" required></label>
+          <label>Mobile number <input type="tel" id="userProfilePhone" required placeholder="Used for your login OTP"></label>
+          <div class="auth-error" id="userProfileError"></div>
+          <div class="auth-success" id="userProfileSuccess"></div>
+          <button type="submit" class="btn btn-primary">Save changes</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+  </div>
+</div>
+
+<!-- ======================= CART DRAWER (user only) ======================= -->
+<div id="cartOverlay" class="modal-overlay hidden">
+  <div class="modal cart-modal">
+    <div class="modal-head"><h3>🛍️ Your cart</h3><button class="modal-close" id="closeCartBtn">✕</button></div>
+    <div id="cartBody"></div>
+    <div class="cart-footer hidden" id="cartFooter">
+      <div class="cart-total-row"><span>Total</span><strong id="cartTotalAmount">₹0</strong></div>
+      <button class="btn btn-primary btn-full" id="goToCheckoutBtn">Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= ADDRESS MODAL (user only) ======================= -->
+<div id="addressModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="addressModalTitle">Add address</h3><button class="modal-close" id="closeAddressModal">✕</button></div>
+    <form id="addressForm" class="auth-form">
+      <label>Label <input type="text" id="addrLabel" placeholder="e.g. Home, Work" maxlength="24"></label>
+      <label>Address line <span class="req">*</span><input type="text" id="addrLine1" required placeholder="House no, street, area"></label>
+      <div class="form-grid">
+        <label>City <span class="req">*</span><input type="text" id="addrCity" required></label>
+        <label>State <input type="text" id="addrState"></label>
+        <label>Pincode <span class="req">*</span><input type="text" id="addrPincode" required></label>
+        <label>Phone <input type="tel" id="addrPhone"></label>
+      </div>
+      <div class="auth-error" id="addressError"></div>
+      <button type="submit" class="btn btn-primary btn-full" id="addressSaveBtn">Save address</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= CREATE ACCOUNT MODAL (Executive only) ======================= -->
+<div id="createAccountModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="createAccountTitle">Add Admin</h3><button class="modal-close" id="closeCreateAccountModal">✕</button></div>
+    <form id="createAccountForm" class="auth-form">
+      <label>Name <input type="text" id="newAccName" required placeholder="Full name"></label>
+      <label>Email <input type="email" id="newAccEmail" required placeholder="you@example.com"></label>
+      <label>Mobile number <input type="tel" id="newAccPhone" required placeholder="10-digit mobile number"></label>
+      <label>Temporary password <input type="password" id="newAccPassword" required placeholder="At least 6 characters"></label>
+      <div class="auth-error" id="createAccountError"></div>
+      <div class="auth-success" id="createAccountSuccess"></div>
+      <button type="submit" class="btn btn-primary btn-full" id="createAccountSaveBtn">Create account</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= RESET PASSWORD MODAL (Executive only) ======================= -->
+<div id="resetPasswordModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="resetPasswordTitle">Reset password</h3><button class="modal-close" id="closeResetPasswordModal">✕</button></div>
+    <form id="resetPasswordForm" class="auth-form">
+      <label>New password <input type="password" id="resetAccPassword" required placeholder="At least 6 characters"></label>
+      <div class="auth-error" id="resetPasswordError"></div>
+      <div class="auth-success" id="resetPasswordSuccess"></div>
+      <button type="submit" class="btn btn-primary btn-full">Reset password</button>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= CHECKOUT MODAL (user only) ======================= -->
+<div id="checkoutOverlay" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="checkoutHeadTitle">Delivery address</h3><button class="modal-close" id="closeCheckoutBtn">✕</button></div>
+
+    <!-- ---- STEP 1: ADDRESS (asked here, at order time — not tucked in the sidebar) ---- -->
+    <div id="checkoutAddressArea">
+      <p class="subtle" style="margin:-8px 0 16px;">Choose where this order should be delivered.</p>
+      <div id="checkoutAddressList"></div>
+      <button type="button" class="btn btn-ghost btn-full" id="checkoutAddNewAddressBtn" style="margin-top:4px;">+ Add new address</button>
+      <div class="auth-error" id="checkoutAddressError"></div>
+      <button type="button" class="btn btn-primary btn-full" id="continueToPaymentBtn" style="margin-top:16px;">Continue to payment</button>
+    </div>
+
+    <!-- ---- STEP 2: PAYMENT ---- -->
+    <div id="checkoutPayArea" class="hidden">
+      <div class="deliver-to-bar" id="checkoutDeliverToBar">
+        <span>📍 <span id="checkoutSelectedAddressText"></span></span>
+        <button type="button" class="link-btn" id="changeAddressBtn">Change</button>
+      </div>
+      <div class="cart-total-row" style="margin-bottom:16px;"><span>Amount payable</span><strong id="checkoutTotalAmount">₹0</strong></div>
+
+      <div class="add-tabs">
+        <button class="pay-tab active" data-paytab="upi">🔲 Scan &amp; Pay</button>
+        <button class="pay-tab" data-paytab="card">💳 Card</button>
+        <button class="pay-tab" data-paytab="cod">💵 COD</button>
+      </div>
+
+      <div id="upiPane" class="pay-pane">
+        <div class="qr-pay-wrap">
+          <img id="qrPayImage" alt="Scan this QR code to pay" width="180" height="180">
+          <div class="qr-pay-caption">Scan with any UPI app (GPay, PhonePe, Paytm…) to pay <strong id="qrPayAmount">₹0</strong></div>
+        </div>
+        <div class="or-divider"><span>or enter UPI ID</span></div>
+        <label>UPI ID <input type="text" id="upiId" placeholder="yourname@upi"></label>
+        <div class="hint">Simulated for demo — no real payment is processed.</div>
+        <button class="btn btn-primary btn-full" id="payUpiBtn">Pay via UPI</button>
+      </div>
+
+      <div id="cardPane" class="pay-pane hidden">
+        <label>Card number <input type="text" id="cardNumber" maxlength="19" placeholder="1234 5678 9012 3456"></label>
+        <div class="form-grid">
+          <label>Expiry <input type="text" id="cardExpiry" maxlength="5" placeholder="MM/YY"></label>
+          <label>CVV <input type="password" id="cardCvv" maxlength="3" placeholder="•••"></label>
+        </div>
+        <div class="hint">Simulated for demo — card details are never sent to the server.</div>
+        <button class="btn btn-primary btn-full" id="payCardBtn">Pay by card</button>
+      </div>
+
+      <div id="codPane" class="pay-pane hidden">
+        <div class="hint">Pay in cash when your order is delivered.</div>
+        <button class="btn btn-primary btn-full" id="payCodBtn">Place order (Cash on delivery)</button>
+      </div>
+
+      <div class="auth-error" id="checkoutError"></div>
+    </div>
+
+    <div id="checkoutSuccess" class="order-success hidden">
+      <span class="emoji">✅</span>
+      <h4>Order placed!</h4>
+      <p id="orderSuccessDetail"></p>
+      <button class="btn btn-primary btn-full" id="orderDoneBtn">Continue shopping</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= ADD ITEM MODAL (sales only) ======================= -->
+<div id="addModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="addModalTitle">Add an item</h3><button class="modal-close" id="closeAddModal">✕</button></div>
+
+    <div class="add-tabs" id="addTabsRow">
+      <button class="add-tab active" data-addtab="camera">📷 Camera scan</button>
+      <button class="add-tab" data-addtab="barcode">⌨️ Type barcode</button>
+      <button class="add-tab" data-addtab="manual">✏️ Manual entry</button>
+    </div>
+
+    <div id="cameraPane" class="add-pane">
+      <div id="cameraWrap" class="camera-wrap">
+        <video id="cameraVideo" playsinline></video>
+        <div class="camera-frame"></div>
+      </div>
+      <div class="hint" id="cameraHint">Point your camera at a barcode. Requires camera permission.</div>
+      <button class="btn btn-ghost btn-full" id="startCameraBtn">Start camera</button>
+      <div id="cameraResult"></div>
+    </div>
+
+    <div id="barcodePane" class="add-pane hidden">
+      <label>Barcode number
+        <input type="text" id="barcodeInput" placeholder="Type the barcode and press Enter" autocomplete="off">
+      </label>
+      <div class="hint">A USB/Bluetooth scanner types the digits and hits Enter automatically — just click the field and scan.</div>
+      <div id="barcodeResult"></div>
+    </div>
+
+    <div id="manualPane" class="add-pane hidden">
+      <form id="itemForm">
+        <label>Item photo (optional)
+          <input type="file" id="fPhoto" accept="image/*" capture="environment">
+        </label>
+        <div id="fPhotoPreviewWrap" class="photo-preview-wrap hidden">
+          <img id="fPhotoPreview" alt="Item photo preview">
+          <button type="button" class="icon-btn danger" id="fPhotoRemove">Remove photo</button>
+        </div>
+        <div class="form-grid">
+          <label>Product name <input type="text" id="fName" required placeholder="e.g. Amul Milk 1L"></label>
+          <label>Brand <input type="text" id="fBrand" placeholder="e.g. Amul"></label>
+          <label>Category <select id="fCategory"></select></label>
+          <label>Price (₹) <input type="number" id="fPrice" min="0" step="1" placeholder="0"></label>
+          <label>Quantity <input type="number" id="fQuantity" min="1" step="1" value="1"></label>
+          <label>Manufactured on <input type="date" id="fMfd"></label>
+          <label>Expiry date <span class="req">*</span> <input type="date" id="fExpiry" required></label>
+        </div>
+        <div class="auth-error" id="itemFormError"></div>
+        <button type="submit" class="btn btn-primary btn-full" id="itemFormSubmitBtn">Add to stock</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>window.SMARTSHELF_PRESET_ROLE = "executive";</script>
+<script src="app.js"></script>
+</body>
+</html>

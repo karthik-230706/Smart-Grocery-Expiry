@@ -1,0 +1,28 @@
+{
+  "name": "smartshelf-backend",
+  "version": "3.4.0",
+  "description": "SmartShelf \u2014 separate Admin and Customer logins with OTP verification, camera barcode scanning + manual entry, live expiry-based pricing. Runs on PC and phone out of the box: same-WiFi via HTTP/HTTPS, or any network (WiFi or mobile data) via a built-in public tunnel.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:bg": "node start-background.js server.js",
+    "tunnel": "node tunnel.js",
+    "tunnel:bg": "node start-background.js tunnel.js",
+    "tunnel:cf": "node cloudflare-tunnel.js",
+    "tunnel:cf:bg": "node start-background.js cloudflare-tunnel.js",
+    "stop": "node stop-background.js",
+    "logs": "node logs.js",
+    "import-data": "node import-local-data.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "selfsigned": "^2.4.1",
+    "qrcode-terminal": "^0.12.0",
+    "localtunnel": "^2.0.2",
+    "pg": "^8.11.5",
+    "mongodb": "^6.8.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
